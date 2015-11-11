@@ -1,0 +1,311 @@
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class KMeansCluster {
+	
+	
+	public static double[][] generateArray(String path) throws IOException{
+		
+			File excel = new File(path);
+			FileInputStream fis = new FileInputStream(excel);
+			XSSFWorkbook wb = new XSSFWorkbook(fis);
+			XSSFSheet ws = wb.getSheet("sheetname");
+			
+			int rowNum = ws.getLastRowNum() + 1;
+			int colNum = ws.getRow(0).getLastCellNum();
+			double[][] array = new double[rowNum][3];
+			String [] split = null;
+			String t = "";
+			int index = 0;
+			for(int i  = 0; i < rowNum; i++){
+				index = 0;
+				XSSFRow row = ws.getRow(i);
+				for(int j = 0; j < colNum; j++){
+					XSSFCell cell = row.getCell(j);
+					String value = cell.getRawValue();
+					System.out.println(value);
+					split = value.split("");
+					for(int k = 0; k < split.length; k++){
+						t = t + split[k];
+						//extract 2 hex chars from hex character string
+						if(t.length() == 2){
+							Long temp = Long.parseLong(t, 16);
+						    double d =  temp.doubleValue();
+						    array[i][index] = d;
+						    index++;
+						    //System.out.print(" "+d);
+						    t = "";
+						}
+					}	
+				}
+				//System.out.println();
+			}
+			return array;
+	}
+
+	public static int generateRandom(int min, int max){
+	
+		return  min + (int)(Math.random() * ((max - 0) + 1));
+	}
+
+	
+	public static int getIndex(double value, double [] array){
+		
+		int index = 0;
+		for(int i = 0; i < array.length; i++){
+				if(array[i] == value){
+					index = i;
+					break;
+				}
+		}
+		return index;
+	}
+	
+	//min value of array
+	public static double minArray(double [] array){
+			
+			double min = array[0];
+			for(int i = 1; i < array.length; i++){
+				if(min > array[i]){
+					min = array[i];
+				}
+			}
+			return min;
+	}
+	
+	//index of the max value
+	public static int maxArrayIndex(double [] array){
+			
+			double max = array[0];
+			for(int i = 1; i < array.length; i++){
+				if(max < array[i]){
+					max = array[i];
+				}
+			}
+			
+			return getIndex(max, array);
+	}
+	
+	//index of min value in an array
+	public static int minArrayIndex(double [] array){
+		
+		double min = array[0];
+		for(int i = 1; i < array.length; i++){
+			if(min > array[i]){
+				min = array[i];
+			}
+		}
+		
+		return getIndex(min, array);
+	}
+	
+	//subtract 2 arrays.
+	public static double arraySub(double[] previouscentroids, double[] centroids){
+		
+		double res = 0;
+		for(int i = 0; i < previouscentroids.length; i++){
+			res = res + Math.abs(previouscentroids[i]-centroids[i]);
+		}	
+		return res;
+	}
+	
+	public static double[]  removeZArray(double[] x){
+		
+		int index = 0;
+		for(int i = 0; i < x.length; i++){
+			if(x[i] != 0){
+				x[index] = x[i];
+				index++;
+			}
+		}
+		double [] temp = new double[index];
+		for(int i = 0; i < temp.length; i++){
+			temp[i] = x[i];
+		}
+		
+		return temp;
+	}
+	
+	// calc sum of matrix row
+		public static double sumRow(double [][] array, int row){
+			
+			double sum = 0;
+			for(int i = 0; i < array[row].length; i++){
+				sum = sum + array[row][i];
+			}
+			
+			return sum;
+		}
+	
+	public static double[][] reorderArray(double[][] result){
+		
+		int indexi = 0;
+		int indexj = 0;
+		double [][] temp = new double[result.length][result[1].length];
+		for(int i = 0; i < temp.length; i++){
+			for (int j = 0; j < temp[i].length; j++) {
+				if(result[i][j] != 0){
+					temp[indexi][indexj] = result[i][j];
+					indexj++;
+				}
+			}
+			indexj = 0;
+			indexi++;
+		}
+		return temp;
+	}
+
+	//set Array to zero
+	public static void setArrayToZ(double[][] r){
+		
+			for(int i = 0; i < r.length; i++){
+				for (int j = 0; j < r[i].length; j++) {
+					r[i][j] = 0;
+				}			
+			}
+	}
+	
+	public static double [] newCentroids(double [][] result){
+		
+		double [] centroids = new double[result.length];
+		double sum = 0;
+		int n = 0;
+		for (int i = 0; i < result.length; i++) {
+			for (int j = 0; j < result[i].length; j++) {
+				if(result[i][j] != 0){
+					n++;
+					sum = sum + result[i][j];
+				}
+				
+			}
+			centroids[i] = sum/n;
+			n = 0;
+			sum = 0;
+		}
+		
+		return centroids;	
+	}
+	
+	public static double [] generateRCentroids(int nOfCentroids, double [] x){
+		
+		double [] centroids = new double[nOfCentroids];
+		for(int i = 0; i < nOfCentroids; i++){
+			centroids[i] = x[generateRandom(0, x.length-1)];
+		}
+		return centroids;
+	}
+	
+	public static double [][] addCentroids(double [][] res, double [] centroids){
+		
+			double [][] result = new double[res.length][res[1].length+1];
+			for (int i = 0; i < res.length; i++) {
+				result[i][0] = centroids[i];
+				for (int j = 1; j < res[i].length; j++) {
+					result[i][j] = res[i][j];
+				}
+			}
+			return result;	
+	}
+	
+	
+	public static double getMaxValue(double [][] groups,int row){
+		
+		double max = groups[row][0];
+			for (int j = 1; j < groups[row].length; j++) {
+				if(max < groups[row][j]){
+					max = groups[row][j];
+				}
+			}
+			return max;
+	}
+	
+	public static void array2DTo1D(double [][] groups, double [] x){
+		
+		for (int i = 0; i < groups.length; i++) {
+			x[i] = sumRow(groups, i);
+			//x[i] = getMaxValue(groups, row)
+		}	
+	}
+	
+	public static void convert2Dto1D(double [][] groups, double [] x){
+		
+		//double [][] temp = new double[groups.length][groups[1].length];
+		for (int i = 0; i < groups.length; i++) {
+			for (int j = 0; j < x.length; j++) {
+				x[i] = groups[i][j];
+			}	
+		}	
+	}
+	
+	//Subtract mean from set
+		public static void process(double[] centroids, double [] x, double [][] result){
+			
+				double [] temp = new double [centroids.length];
+				setArrayToZ(result);
+				for(int i = 0; i < x.length; i++){
+					for(int j = 0; j < centroids.length; j++){
+						temp[j] = Math.pow(x[i] - centroids[j],2);
+						System.out.print("difference: "+temp[j]+" x: "+x[i]+" mean: "+centroids[j]);
+					}	
+					System.out.println();
+					result[minArrayIndex(temp)][i] = x[i];
+				}
+				result = reorderArray(result);
+				convert2Dto1D(result, x);	
+		}
+		
+	
+	// run K means
+		public static double[][] classifyObjects(double [][] array, int nOfCentroids){
+			
+			// x -> set of objects;
+			double [] x = new double[array.length];
+			double [][] result = new double[nOfCentroids][array.length];
+			//System.out.println("sadas: "+array.length);
+			array2DTo1D(array,x);
+			//generating centroids
+			double [] centroids = generateRCentroids(nOfCentroids, x);
+			double [] previouscentroids = new double [centroids.length];
+			int index = 0;
+			double diff = 1;
+			
+			do{
+				//subtract centroids from set
+				process(centroids, x, result);
+				for(int i = 0; i < centroids.length; i++){
+					previouscentroids[i] = centroids[i];
+				}
+				centroids = newCentroids(result);
+				index++;
+				diff = Math.abs(arraySub(previouscentroids, centroids));
+				System.out.println("difference: "+ diff+ " iter: "+index);
+			}while(diff > 0.01);
+				
+			double [][] res = new double[result.length][result[1].length+centroids.length];
+			res = addCentroids(result, centroids);
+			return res;
+		}
+	
+	
+	public static void main(String [] arg) throws IOException{
+		
+		double[][] s = generateArray("filename.xls");
+		double[][] result = classifyObjects(s,2);
+		//result = reorderArray(result);
+		for (int i = 0; i < result.length; i++) {
+			for (int j = 0; j < result[i].length; j++) {
+				if(result[i][j] != 0){
+					System.out.print(" "+result[i][j]);
+				}
+			}
+			System.out.println();
+		}
+	
+	}
+}
